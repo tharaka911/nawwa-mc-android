@@ -4,65 +4,69 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/ConstrainLayout"
     android:layout_width="match_parent"
-    android:layout_height="@dimen/nav_header_height"
+    android:layout_height="wrap_content"
     android:background="@color/ToolbarColor"
-    android:padding="16dp"
+    android:paddingStart="20dp"
+    android:paddingTop="64dp"
+    android:paddingEnd="20dp"
+    android:paddingBottom="32dp"
     android:theme="@style/ThemeOverlay.AppCompat.Dark">
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/UserProfilePic"
-        android:layout_width="72dp"
-        android:layout_height="72dp"
-        android:adjustViewBounds="true"
-        android:contentDescription="@string/nav_header_desc"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:scaleType="centerCrop"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
+        app:strokeColor="@color/yellow"
+        app:strokeWidth="1.5dp"
         tools:src="@mipmap/ic_launcher_round" />
 
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:fontFamily="@font/montserrat_light"
-        android:text="Welcome,"
-        android:textAlignment="viewStart"
-        android:textSize="14sp"
-        app:layout_constraintBottom_toTopOf="@+id/LoggedUserName"
-        app:layout_constraintStart_toEndOf="@+id/UserProfilePic"
-        app:layout_constraintTop_toTopOf="@+id/UserProfilePic"
-        app:layout_constraintVertical_chainStyle="packed" />
-
-    <TextView
-        android:id="@+id/LoggedUserName"
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:fontFamily="@font/montserrat_bold"
-        android:text="@string/nav_header_title"
-        android:textAlignment="textStart"
-        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-        android:textSize="18sp"
-        app:layout_constraintBottom_toTopOf="@+id/LoggedUserEmail"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/UserProfilePic"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
-
-    <TextView
-        android:id="@+id/LoggedUserEmail"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:alpha="0.7"
-        android:fontFamily="@font/montserrat_regular"
-        android:text="@string/nav_header_subtitle"
-        android:textAlignment="textStart"
-        android:textSize="12sp"
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="@+id/UserProfilePic"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/UserProfilePic"
-        app:layout_constraintTop_toBottomOf="@+id/LoggedUserName" />
+        app:layout_constraintTop_toTopOf="@+id/UserProfilePic">
+
+        <TextView
+            android:id="@+id/textView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:alpha="0.8"
+            android:fontFamily="@font/montserrat_light"
+            android:text="Welcome,"
+            android:textColor="@color/white"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/LoggedUserName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/montserrat_bold"
+            android:maxLines="1"
+            android:text="@string/nav_header_title"
+            android:textColor="@color/white"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/LoggedUserEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.6"
+            android:ellipsize="end"
+            android:fontFamily="@font/montserrat_regular"
+            android:maxLines="1"
+            android:text="@string/nav_header_subtitle"
+            android:textColor="@color/white"
+            android:textSize="11sp" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
