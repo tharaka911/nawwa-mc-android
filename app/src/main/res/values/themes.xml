@@ -1,0 +1,33 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.MacNaMC" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <item name="colorPrimary">@color/primary_brand</item>
+        <item name="colorPrimaryDark">@color/primary_dark_brand</item>
+        <item name="colorAccent">@color/accent_yellow</item>
+        
+        <item name="android:statusBarColor">@color/primary_dark_brand</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+
+        <!-- Customizing the Hamburger Icon -->
+        <item name="drawerArrowStyle">@style/CustomDrawerArrowStyle</item>
+    </style>
+
+    <style name="Theme.MacNaMC" parent="Base.Theme.MacNaMC" />
+    
+    <style name="Theme.MacNaMC.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    
+    <style name="Theme.MacNaMC.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    
+    <style name="Theme.MacNaMC.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <style name="CustomDrawerArrowStyle" parent="Widget.AppCompat.DrawerArrowToggle">
+        <item name="thickness">2.5dp</item>
+        <item name="barLength">18dp</item>
+        <item name="gapBetweenBars">4dp</item>
+        <item name="color">@color/yellow</item>
+    </style>
+</resources>

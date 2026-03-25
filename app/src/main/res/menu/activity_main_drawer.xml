@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <item android:title="Store">
+        <menu>
+            <item
+                android:id="@+id/nav_home"
+                android:icon="@drawable/ic_menu_home"
+                android:title="@string/menu_home" />
+            <item
+                android:id="@+id/nav_category"
+                android:icon="@drawable/ic_menu_category"
+                android:title="@string/menu_category" />
+            <item
+                android:id="@+id/nav_product"
+                android:icon="@drawable/products_svgrepo_com"
+                android:title="@string/menu_product" />
+        </menu>
+    </item>
+
+    <item android:title="My Account">
+        <menu>
+            <item
+                android:id="@+id/nav_my_orders"
+                android:icon="@drawable/ic_menu_my_orders"
+                android:title="@string/menu_my_orders" />
+            <item
+                android:id="@+id/nav_cart"
+                android:icon="@drawable/ic_menu_cart"
+                android:title="@string/menu_cart" />
+            <item
+                android:id="@+id/nav_my_profile"
+                android:icon="@drawable/profile_round_svgrepo_com"
+                android:title="@string/menu_my_profile" />
+        </menu>
+    </item>
+
+</menu>

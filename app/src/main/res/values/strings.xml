@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">Nawwa-MC</string>
+    <string name="registerPage_textViewTitle">Register to Nawwa-MC</string>
+    <string name="loginPage_textViewTitle">Login to Nawwa MC</string>
+    <string name="ForgotPasswordPage_textViewTitle">Forgot Password</string>
+    <string name="ForgotPasswordPage_textView1">Enter the Email you registered,</string>
+    <string name="ForgotPasswordPage_textView2">Submit</string>
+    <string name="ForgotPasswordPage_Hint1">Email</string>
+    <string name="registerPage_editTextName">Name</string>
+    <string name="registerPage_editTextEmail">Mail Address</string>
+    <string name="loginPage_editTextEmail">Mail Address</string>
+    <string name="registerPage_editTextYPhone">Phone</string>
+    <string name="registerPage_editTextPassword">Password</string>
+    <string name="loginPage_editTextPassword">Password</string>
+    <string name="registerPage_buttonRegister">Register</string>
+    <string name="loginPage_buttonGoToRegister">Go to Register</string>
+    <string name="loginPage_buttonGoToForgotPassword">Forgot Password?</string>
+    <string name="loginPage_buttonLogin">Login</string>
+    <string name="registerPage_buttonGoToLogin">Go to Login</string>
+    <string name="title_activity_home">HomeActivity</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">UserName</string>
+    <string name="nav_header_subtitle">User@gmail.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+    <string name="profile_picture">Profile Picture</string>
+    <string name="menu_home">Home</string>
+    <string name="menu_my_orders">My Orders</string>
+    <string name="menu_cart">Cart</string>
+    <string name="menu_product">Products</string>
+    <string name="menu_my_profile">My Profile</string>
+    <string name="menu_category">Category</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+
+    <string name="verification_icon">Verification Icon</string>
+</resources>

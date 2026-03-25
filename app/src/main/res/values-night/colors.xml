@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark Mode Specific Colors -->
+    <color name="background_color">#121212</color>
+    <color name="card_background">#1E1E1E</color>
+    <color name="primary_text_color">#FFFFFF</color>
+    <color name="secondary_text_color">#B0B0B0</color>
+    <color name="light_gray">#333333</color>
+    <color name="divider_color">#2C2C2C</color>
+</resources>

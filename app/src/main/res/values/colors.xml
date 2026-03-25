@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand Colors -->
+    <color name="primary_dark_brand">#212121</color>
+    <color name="primary_brand">#2D2D2D</color>
+    <color name="accent_yellow">#FFC107</color>
+    <color name="accent_yellow_light">#FFE082</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="yellow">#FFC107</color>
+
+    <!-- UI Colors -->
+    <color name="ToolbarColor">#212121</color>
+    <color name="spash_logo_color">#212121</color>
+    <color name="background_color">#F5F5F5</color>
+    <color name="card_background">#FFFFFF</color>
+
+    <color name="primary">#212121</color>
+    <color name="primary_dark">#000000</color>
+    <color name="accent">#FFC107</color>
+    <color name="gray">#808080</color>
+    <color name="light_gray">#D3D3D3</color>
+
+    <color name="primary_text_color">#212121</color>
+    <color name="secondary_text_color">#757575</color>
+
+    <!-- Compatibility Aliases (to fix build errors) -->
+    <color name="primary_color">@color/primary_brand</color>
+    <color name="primary_category_border_text">@color/white</color>
+    <color name="TextInputHintsColor">@color/accent_yellow</color>
+    <color name="divider_color">#BDBDBD</color>
+
+</resources>
