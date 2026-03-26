@@ -19,11 +19,15 @@ import java.util.List;
 import lk.macna.nawwa_mc.R;
 import lk.macna.nawwa_mc.model.Order;
 
+/**
+ * MyOrdersAdapter manages the list of user orders, displaying product info,
+ * order status, and total pricing, and providing an interface for item clicks.
+ */
 public class MyOrdersAdapter extends RecyclerView.Adapter<MyOrdersAdapter.MyOrdersViewHolder> {
 
-    private List<Order> orderList;
-    private OnOrderItemClickListener listener;
-    private static final String TAG = "MyOrdersAdapterLog";
+    private static final String TAG = "MyOrdersAdapter";
+    private final List<Order> orderList;
+    private final OnOrderItemClickListener listener;
 
     public interface OnOrderItemClickListener {
         void onAddToCartClicked(String orderId);
@@ -45,42 +49,50 @@ public class MyOrdersAdapter extends RecyclerView.Adapter<MyOrdersAdapter.MyOrde
     @Override
     public void onBindViewHolder(@NonNull MyOrdersViewHolder holder, int position) {
         Order order = orderList.get(position);
-        holder.textViewProductName.setText(order.getProductName());
-        holder.textViewOrderStatus.setText(order.getOrderStatus());
-        holder.textViewTotalPrice.setText(String.format("Total Price: $%.2f", order.getTotalPrice()));
-
-        // Load image using Glide
-        Glide.with(holder.itemView.getContext())
-                .load(order.getImageUrl())
-                .placeholder(R.drawable.new_product)
-                .into(holder.imageViewProduct);
-
-        holder.buttonAddToCart.setOnClickListener(v -> {
-            Toast.makeText(holder.itemView.getContext(), "Fill your order dispatch address for, " + order.getProductName() + " the product", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, "ButtonAddToCart clicked for orderId: " + order.getOrderID());
-            listener.onAddToCartClicked(order.getOrderID());
-        });
+        holder.bind(order, listener);
     }
 
     @Override
     public int getItemCount() {
-        return orderList.size();
+        return orderList != null ? orderList.size() : 0;
     }
 
-    public static class MyOrdersViewHolder extends RecyclerView.ViewHolder {
-        ImageView imageViewProduct;
-        TextView textViewProductName;
-        TextView textViewOrderStatus;
-        TextView textViewTotalPrice;
-        Button buttonAddToCart;
+    /**
+     * ViewHolder for order items.
+     */
+    static class MyOrdersViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView productImageView;
+        private final TextView productNameTextView;
+        private final TextView orderStatusTextView;
+        private final TextView totalPriceTextView;
+        private final Button addToCartButton;
 
-        public MyOrdersViewHolder(View itemView) {
+        public MyOrdersViewHolder(@NonNull View itemView) {
             super(itemView);
-            imageViewProduct = itemView.findViewById(R.id.imageViewProduct);
-            textViewProductName = itemView.findViewById(R.id.textViewProductName);
-            textViewOrderStatus = itemView.findViewById(R.id.textViewOrderStatus);
-            textViewTotalPrice = itemView.findViewById(R.id.textViewTotalPrice);
-            buttonAddToCart = itemView.findViewById(R.id.ButtonaddToCart);
+            productImageView = itemView.findViewById(R.id.imageViewProduct);
+            productNameTextView = itemView.findViewById(R.id.textViewProductName);
+            orderStatusTextView = itemView.findViewById(R.id.textViewOrderStatus);
+            totalPriceTextView = itemView.findViewById(R.id.textViewTotalPrice);
+            addToCartButton = itemView.findViewById(R.id.ButtonaddToCart);
+        }
+
+        public void bind(Order order, OnOrderItemClickListener listener) {
+            productNameTextView.setText(order.getProductName());
+            orderStatusTextView.setText(order.getOrderStatus());
+            totalPriceTextView.setText(String.format("Total Price: $%.2f", order.getTotalPrice()));
+
+            Glide.with(itemView.getContext())
+                    .load(order.getImageUrl())
+                    .placeholder(R.drawable.new_product)
+                    .centerCrop()
+                    .into(productImageView);
+
+            addToCartButton.setOnClickListener(v -> {
+                Toast.makeText(itemView.getContext(), "Opening dispatch form for " + order.getProductName(), Toast.LENGTH_SHORT).show();
+                if (listener != null) {
+                    listener.onAddToCartClicked(order.getOrderID());
+                }
+            });
         }
     }
 }

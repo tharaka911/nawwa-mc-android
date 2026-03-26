@@ -1,42 +1,66 @@
 package lk.macna.nawwa_mc;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
-import android.widget.ImageView;
+import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import lk.macna.nawwa_mc.databinding.ActivitySplashBinding;
+
+/**
+ * SplashActivity handles the initial application startup, displays a logo animation,
+ * and determines the initial destination based on user authentication status.
+ */
+@SuppressLint("CustomSplashScreen")
 public class SplashActivity extends AppCompatActivity {
 
-    private static final int SPLASH_DISPLAY_LENGTH = 1000; // Duration of wait
+    private static final int SPLASH_DELAY_MS = 1000;
+    private static final int ANIMATION_DURATION_MS = 700;
+    private static final String PREFS_NAME = "MyPrefs";
+    private static final String TOKEN_KEY = "token";
+
+    private ActivitySplashBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_splash);
+        binding = ActivitySplashBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        // Start the animation
-        ImageView logo = findViewById(R.id.splash_logo);
-        logo.setAlpha(0f);
-        logo.animate().alpha(1f).setDuration(700);
+        startLogoAnimation();
+        navigateToNextScreenDelayed();
+    }
 
-        new Handler().postDelayed(() -> {
-            SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
-            String token = sharedPreferences.getString("token", null);
+    private void startLogoAnimation() {
+        binding.splashLogo.setAlpha(0f);
+        binding.splashLogo.animate()
+                .alpha(1f)
+                .setDuration(ANIMATION_DURATION_MS)
+                .start();
+    }
 
-            if (token != null) {
-                // User is logged in, navigate to HomeActivity
-                Intent intent = new Intent(SplashActivity.this, HomeActivity.class);
-                startActivity(intent);
-            } else {
-                // User is not logged in, navigate to LoginActivity
-                Intent intent = new Intent(SplashActivity.this, VerificationActivity.class);
-                startActivity(intent);
-            }
+    private void navigateToNextScreenDelayed() {
+        new Handler(Looper.getMainLooper()).postDelayed(this::checkAuthAndNavigate, SPLASH_DELAY_MS);
+    }
 
-            finish();
-        }, SPLASH_DISPLAY_LENGTH);
+    private void checkAuthAndNavigate() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String token = prefs.getString(TOKEN_KEY, null);
+
+        Intent intent;
+        if (token != null) {
+            // User is authenticated
+            intent = new Intent(this, HomeActivity.class);
+        } else {
+            // User needs to authenticate or verify
+            intent = new Intent(this, VerificationActivity.class);
+        }
+
+        startActivity(intent);
+        finish();
     }
 }

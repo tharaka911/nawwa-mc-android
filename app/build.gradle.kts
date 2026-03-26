@@ -15,6 +15,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Set BASE_URL from gradle.properties (Default if not found)
+        val baseUrl = project.findProperty("BASE_URL") ?: "https://ecom-api.macna.app"
+        buildConfigField("String", "BASE_URL", baseUrl.toString())
     }
 
     buildTypes {
@@ -32,6 +36,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

@@ -13,14 +13,19 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import java.io.IOException;
 import java.util.List;
+
 import lk.macna.nawwa_mc.R;
 import lk.macna.nawwa_mc.model.Product;
+import lk.macna.nawwa_mc.network.ApiConfig;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -29,17 +34,23 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * ProductAdapter manages the display of products in a list and handles
+ * interactions such as adding items to the shopping cart.
+ */
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
 
-    private static final String TAG = "ProductAdapterLog";
-    private static final String CART_API_URL = "https://ecom-api.macna.app/api/carts";
-    private List<Product> productList;
-    private OkHttpClient client = new OkHttpClient();
-    private SharedPreferences sharedPreferences;
+    private static final String TAG = "ProductAdapter";
+    private static final String PREFS_NAME = "MyPrefs";
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.get(ApiConfig.JSON_MEDIA_TYPE);
 
-    public ProductAdapter(List<Product> productList, Context context) {
+    private final List<Product> productList;
+    private final OkHttpClient httpClient = new OkHttpClient();
+    private final SharedPreferences sharedPreferences;
+
+    public ProductAdapter(List<Product> productList, @NonNull Context context) {
         this.productList = productList;
-        this.sharedPreferences = context.getSharedPreferences("MyPrefs", Context.MODE_PRIVATE);
+        this.sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
     @NonNull
@@ -53,30 +64,57 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
     @Override
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
         Product product = productList.get(position);
-        holder.textViewProductName.setText(product.getName());
-        holder.textViewCategoryType.setText(product.getCategory());
-        holder.textViewProductPrice.setText(String.format("$%.2f", product.getPrice()));
-
-        // Load image using Glide
-        Glide.with(holder.itemView.getContext())
-                .load(product.getImageUrl())
-                .placeholder(R.drawable.new_product) // default image
-                .into(holder.imageViewProduct);
-
-        // Handle add to cart button click
-        holder.buttonAddToCart.setOnClickListener(v -> {
-            Toast.makeText(holder.itemView.getContext(), "You're Added, " + product.getName()+" to cart", Toast.LENGTH_SHORT).show();
-            Log.d(TAG, String.format("Add to Cart pressed for product: [ID: %s, Name: %s, Price: $%.2f]", product.getId(), product.getName(), product.getPrice()));
-            addToCart(product.getId());
-        });
+        holder.bind(product);
     }
 
     @Override
     public int getItemCount() {
-        return productList.size();
+        return productList != null ? productList.size() : 0;
     }
 
-    private void addToCart(String productId) {
+    /**
+     * ViewHolder for Product items, encapsulating view logic and click listeners.
+     */
+    class ProductViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView productImageView;
+        private final TextView nameTextView;
+        private final TextView categoryTextView;
+        private final TextView priceTextView;
+        private final Button addToCartButton;
+
+        public ProductViewHolder(@NonNull View itemView) {
+            super(itemView);
+            productImageView = itemView.findViewById(R.id.imageViewProduct);
+            nameTextView = itemView.findViewById(R.id.textViewProductName);
+            categoryTextView = itemView.findViewById(R.id.textViewOrderStatus2);
+            priceTextView = itemView.findViewById(R.id.textViewTotalPrice);
+            addToCartButton = itemView.findViewById(R.id.ButtonaddToCart);
+        }
+
+        public void bind(Product product) {
+            nameTextView.setText(product.getName());
+            categoryTextView.setText(product.getCategory());
+            priceTextView.setText(String.format("$%.2f", product.getPrice()));
+
+            Glide.with(itemView.getContext())
+                    .load(product.getImageUrl())
+                    .placeholder(R.drawable.new_product)
+                    .centerCrop()
+                    .into(productImageView);
+
+            addToCartButton.setOnClickListener(v -> handleAddToCart(product));
+        }
+
+        private void handleAddToCart(Product product) {
+            Toast.makeText(itemView.getContext(), "Added " + product.getName() + " to cart", Toast.LENGTH_SHORT).show();
+            addToCartApiCall(product.getId());
+        }
+    }
+
+    /**
+     * Network call to add a product to the user's remote cart.
+     */
+    private void addToCartApiCall(String productId) {
         String apiKey = sharedPreferences.getString("apiKey", "");
 
         if (apiKey.isEmpty()) {
@@ -85,58 +123,45 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         }
 
         try {
-            JSONObject productObject = new JSONObject();
-            productObject.put("product", productId);
-            productObject.put("quantity", 1);
-
-            JSONArray productsArray = new JSONArray();
-            productsArray.put(productObject);
-
-            JSONObject cartObject = new JSONObject();
-            cartObject.put("products", productsArray);
-
-            RequestBody body = RequestBody.create(cartObject.toString(), MediaType.get("application/json; charset=utf-8"));
+            JSONObject cartJson = createCartRequestJson(productId);
+            RequestBody body = RequestBody.create(cartJson.toString(), JSON_MEDIA_TYPE);
+            
             Request request = new Request.Builder()
-                    .url(CART_API_URL)
+                    .url(ApiConfig.CARTS_URL)
                     .post(body)
                     .addHeader("Authorization", "users API-Key " + apiKey)
-                    .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            httpClient.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    Log.e(TAG, "Error adding product to cart", e);
+                    Log.e(TAG, "Cart update failed: " + e.getMessage());
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        Log.d(TAG, "Product added to cart successfully");
+                        Log.d(TAG, "Successfully added to cart");
                     } else {
-                        Log.e(TAG, "Unsuccessful response: " + response.code());
+                        Log.e(TAG, "Cart update error: " + response.code());
                     }
                 }
             });
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating JSON object for cart", e);
+            Log.e(TAG, "JSON creation failed", e);
         }
     }
 
-    public static class ProductViewHolder extends RecyclerView.ViewHolder {
-        ImageView imageViewProduct;
-        TextView textViewProductName;
-        TextView textViewCategoryType;
-        TextView textViewProductPrice;
-        Button buttonAddToCart;
+    private JSONObject createCartRequestJson(String productId) throws JSONException {
+        JSONObject productEntry = new JSONObject();
+        productEntry.put("product", productId);
+        productEntry.put("quantity", 1);
 
-        public ProductViewHolder(View itemView) {
-            super(itemView);
-            imageViewProduct = itemView.findViewById(R.id.imageViewProduct);
-            textViewProductName = itemView.findViewById(R.id.textViewProductName);
-            textViewCategoryType = itemView.findViewById(R.id.textViewOrderStatus2);
-            textViewProductPrice = itemView.findViewById(R.id.textViewTotalPrice);
-            buttonAddToCart = itemView.findViewById(R.id.ButtonaddToCart);
-        }
+        JSONArray productsList = new JSONArray();
+        productsList.put(productEntry);
+
+        JSONObject root = new JSONObject();
+        root.put("products", productsList);
+        return root;
     }
 }

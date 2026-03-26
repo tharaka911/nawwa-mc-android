@@ -1,5 +1,6 @@
 package lk.macna.nawwa_mc.ui.home;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -11,12 +12,13 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.LinearSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.SnapHelper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,144 +28,113 @@ import lk.macna.nawwa_mc.R;
 import lk.macna.nawwa_mc.databinding.FragmentHomeBinding;
 import lk.macna.nawwa_mc.ui.category.BannerAdapter;
 
+/**
+ * HomeFragment handles the main dashboard display, including a sliding banner
+ * and quick access cards for core application features.
+ */
 public class HomeFragment extends Fragment {
 
-    private FragmentHomeBinding binding;
-    private BannerAdapter bannerAdapterTop;
-    private BannerAdapter bannerAdapterBottom1;
-    private BannerAdapter bannerAdapterBottom2;
-    private Handler handlerTop, handlerBottom1, handlerBottom2;
-    private Runnable runnableTop, runnableBottom1, runnableBottom2;
+    private static final int BANNER_SCROLL_DELAY_MS = 3000;
+    private static final String SUPPORT_PHONE_NUMBER = "0718888777";
 
-    private static final int SCROLL_DELAY = 2000;
-    private static final String ADMIN_CONTACT_NUMBER = "0710351156";
+    private FragmentHomeBinding binding;
+    private final Handler autoScrollHandler = new Handler(Looper.getMainLooper());
+    private Runnable autoScrollRunnable;
 
     private final List<Integer> bannerImages = Arrays.asList(
-            R.drawable.banner1,
-            R.drawable.banner6,
-            R.drawable.banner2,
-            R.drawable.banner7,
-            R.drawable.banner3,
-            R.drawable.banner8,
-            R.drawable.banner4,
-            R.drawable.banner9,
-            R.drawable.banner5,
-            R.drawable.banner10
+            R.drawable.weclome_baner,
+            R.drawable.weekend_baner,
+            R.drawable.new_year_baner
     );
 
+    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
-        View root = binding.getRoot();
-
-        setupRecyclerViews();
-        setupAutoScroll();
-        setupNavigationButtons();
-
-        // Updated to use card ID
-        binding.cardContactAdmin.setOnClickListener(v -> openDialerWithContactNumber());
-
-        return root;
+        return binding.getRoot();
     }
 
-    private void setupRecyclerViews() {
-        // Initialize Adapters
-        bannerAdapterTop = new BannerAdapter(new ArrayList<>(bannerImages));
-        bannerAdapterBottom1 = new BannerAdapter(new ArrayList<>(bannerImages));
-        bannerAdapterBottom2 = new BannerAdapter(new ArrayList<>(bannerImages));
-
-        // Setup RecyclerViews with Linear Layout Managers
-        setupRecyclerView(binding.recyclerViewHomeBanner, bannerAdapterTop);
-        setupRecyclerView(binding.recyclerViewCategoryBanner1, bannerAdapterBottom1);
-        setupRecyclerView(binding.recyclerViewCategoryBanner2, bannerAdapterBottom2);
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        
+        setupBanner();
+        setupDashboardNavigation();
     }
 
-    private void setupRecyclerView(RecyclerView recyclerView, BannerAdapter adapter) {
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false));
+    /**
+     * Configures the top sliding banner with auto-scroll and snapping.
+     */
+    private void setupBanner() {
+        BannerAdapter adapter = new BannerAdapter(new ArrayList<>(bannerImages));
+        RecyclerView recyclerView = binding.recyclerViewHomeBanner;
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false));
         recyclerView.setAdapter(adapter);
+        
+        // Ensure smooth snapping to center
+        new LinearSnapHelper().attachToRecyclerView(recyclerView);
 
-        // Add smooth snapping effect
-        SnapHelper snapHelper = new LinearSnapHelper();
-        snapHelper.attachToRecyclerView(recyclerView);
+        startBannerAutoScroll(recyclerView, adapter);
     }
 
-    private void setupAutoScroll() {
-        handlerTop = new Handler(Looper.getMainLooper());
-        handlerBottom1 = new Handler(Looper.getMainLooper());
-        handlerBottom2 = new Handler(Looper.getMainLooper());
-
-        startAutoScroll(binding.recyclerViewHomeBanner, bannerAdapterTop, handlerTop, () -> runnableTop);
-        startAutoScroll(binding.recyclerViewCategoryBanner1, bannerAdapterBottom1, handlerBottom1, () -> runnableBottom1);
-        startAutoScroll(binding.recyclerViewCategoryBanner2, bannerAdapterBottom2, handlerBottom2, () -> runnableBottom2);
-    }
-
-    private void startAutoScroll(RecyclerView recyclerView, BannerAdapter adapter, Handler handler, RunnableSupplier runnableSupplier) {
-        Runnable runnable = new Runnable() {
+    @SuppressLint("ClickableViewAccessibility")
+    private void startBannerAutoScroll(RecyclerView recyclerView, BannerAdapter adapter) {
+        autoScrollRunnable = new Runnable() {
             @Override
             public void run() {
-                if (adapter.getItemCount() == 0) return;
-
                 LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
-                int currentPosition = layoutManager.findFirstVisibleItemPosition();
-                int nextPosition = (currentPosition + 1) % adapter.getItemCount();
-
-                recyclerView.smoothScrollToPosition(nextPosition);
-                handler.postDelayed(this, SCROLL_DELAY);
+                if (layoutManager != null && adapter.getItemCount() > 0) {
+                    int nextPosition = (layoutManager.findFirstVisibleItemPosition() + 1) % adapter.getItemCount();
+                    recyclerView.smoothScrollToPosition(nextPosition);
+                    autoScrollHandler.postDelayed(this, BANNER_SCROLL_DELAY_MS);
+                }
             }
         };
 
-        handler.postDelayed(runnable, SCROLL_DELAY);
+        autoScrollHandler.postDelayed(autoScrollRunnable, BANNER_SCROLL_DELAY_MS);
 
+        // Pause auto-scroll on manual touch to improve UX
         recyclerView.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                handler.removeCallbacks(runnable);
-            } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                handler.postDelayed(runnable, SCROLL_DELAY);
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    autoScrollHandler.removeCallbacks(autoScrollRunnable);
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    autoScrollHandler.postDelayed(autoScrollRunnable, BANNER_SCROLL_DELAY_MS);
+                    if (event.getAction() == MotionEvent.ACTION_UP) {
+                        v.performClick();
+                    }
+                    break;
             }
             return false;
         });
-
-        // Store the runnable reference for cleanup
-        if (runnableSupplier.get() == runnableTop) {
-            runnableTop = runnable;
-        } else if (runnableSupplier.get() == runnableBottom1) {
-            runnableBottom1 = runnable;
-        } else if (runnableSupplier.get() == runnableBottom2) {
-            runnableBottom2 = runnable;
-        }
     }
 
-    private void setupNavigationButtons() {
-        // Updated to use new Card IDs from the dashboard grid
-        binding.cardMyOrders.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.nav_my_orders));
-        binding.cardCart.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.nav_cart));
-        binding.cardCategory.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.nav_category));
-        binding.cardProduct.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.nav_product));
-        binding.cardMyProfile.setOnClickListener(v ->
-                Navigation.findNavController(v).navigate(R.id.nav_my_profile));
+    /**
+     * Sets up click listeners for all dashboard quick-action cards.
+     */
+    private void setupDashboardNavigation() {
+        NavController navController = Navigation.findNavController(requireView());
+
+        binding.cardMyOrders.setOnClickListener(v -> navController.navigate(R.id.nav_my_orders));
+        binding.cardCart.setOnClickListener(v -> navController.navigate(R.id.nav_cart));
+        binding.cardCategory.setOnClickListener(v -> navController.navigate(R.id.nav_category));
+        binding.cardProduct.setOnClickListener(v -> navController.navigate(R.id.nav_product));
+        binding.cardMyProfile.setOnClickListener(v -> navController.navigate(R.id.nav_my_profile));
+        binding.cardContactAdmin.setOnClickListener(v -> dialSupportNumber());
     }
 
-    private void openDialerWithContactNumber() {
-        Intent intent = new Intent(Intent.ACTION_DIAL);
-        intent.setData(Uri.parse("tel:" + ADMIN_CONTACT_NUMBER));
+    private void dialSupportNumber() {
+        Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + SUPPORT_PHONE_NUMBER));
         startActivity(intent);
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Clean up handlers to avoid memory leaks
-        if (handlerTop != null) handlerTop.removeCallbacks(runnableTop);
-        if (handlerBottom1 != null) handlerBottom1.removeCallbacks(runnableBottom1);
-        if (handlerBottom2 != null) handlerBottom2.removeCallbacks(runnableBottom2);
+        autoScrollHandler.removeCallbacks(autoScrollRunnable);
         binding = null;
-    }
-
-    private interface RunnableSupplier {
-        Runnable get();
     }
 }

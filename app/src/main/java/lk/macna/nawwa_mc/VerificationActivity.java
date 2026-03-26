@@ -1,5 +1,6 @@
 package lk.macna.nawwa_mc;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.hardware.Sensor;
@@ -8,150 +9,186 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.TextView;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
+import lk.macna.nawwa_mc.databinding.ActivityVerificationBinding;
+
+/**
+ * VerificationActivity implements a simple gesture-based human verification system
+ * using the device's accelerometer to detect phone flips.
+ */
 public class VerificationActivity extends AppCompatActivity {
 
-    private static final String TAG = "VerificationActivityLog";
+    private static final String TAG = "VerificationActivity";
+    private static final float FLIP_THRESHOLD = 9.0f;
+    private static final int REQUIRED_FLIPS = 4; // 2 full cycles (up/down x 2)
+    private static final int DETECTION_COOLDOWN_MS = 500;
+    private static final String BRAND_URL = "https://ecom-api.macna.app";
 
+    private ActivityVerificationBinding binding;
     private SensorManager sensorManager;
     private Sensor accelerometer;
 
-    private TextView verificationText;
-
-    private boolean isHumanVerified = false;
-    private boolean isDialogShowing = false; // Flag to prevent multiple dialogs
-    private static final float FLIP_THRESHOLD = 9;  
-    private static final int MIN_FLIP_COUNT = 2; 
     private int flipCount = 0;
     private boolean isUpsideDown = false;
-    private boolean verificationStarted = false;
-    private boolean flipDetected = false;
+    private boolean isVerificationActive = false;
+    private boolean isCooldownActive = false;
+    private boolean isDialogShowing = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_verification);
+        binding = ActivityVerificationBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        verificationText = findViewById(R.id.verificationText);
-        Button startVerificationButton = findViewById(R.id.startVerificationButton);
-        Button helpButton = findViewById(R.id.helpButton);
+        setupEdgeToEdge();
+        initializeSensors();
+        setupClickListeners();
+    }
 
+    private void setupEdgeToEdge() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+    }
+
+    private void initializeSensors() {
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         if (sensorManager != null) {
             accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         }
+    }
 
-        startVerificationButton.setOnClickListener(v -> startVerification());
-
-        helpButton.setOnClickListener(v -> {
-            String url = "https://macna.app"; // Updated to your brand URL
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(Uri.parse(url));
-            startActivity(intent);
-        });
+    private void setupClickListeners() {
+        binding.startVerificationButton.setOnClickListener(v -> startFlipVerification());
+        binding.helpButton.setOnClickListener(v -> openBrandWebsite());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (sensorManager != null && verificationStarted && !isHumanVerified) {
-            sensorManager.registerListener(sensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
+        if (isVerificationActive) {
+            registerSensorListener();
         }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        if (sensorManager != null) {
-            sensorManager.unregisterListener(sensorEventListener);
-        }
+        unregisterSensorListener();
     }
 
-    private void startVerification() {
+    @SuppressLint("SetTextI18n")
+    private void startFlipVerification() {
         flipCount = 0;
-        isHumanVerified = false;
-        isDialogShowing = false;
-        verificationStarted = true;
-        isUpsideDown = false;  
-        flipDetected = false;   
-        verificationText.setText("Verification started. Please flip your phone 2 times.");
-        Toast.makeText(this, "Verification started", Toast.LENGTH_SHORT).show();
+        isVerificationActive = true;
+        isUpsideDown = false;
+        isCooldownActive = false;
+        
+        binding.verificationText.setText("Please flip your phone face down and up twice.");
+        Toast.makeText(this, "Verification Mode Active", Toast.LENGTH_SHORT).show();
+        
+        registerSensorListener();
+    }
 
+    private void registerSensorListener() {
         if (sensorManager != null && accelerometer != null) {
             sensorManager.registerListener(sensorEventListener, accelerometer, SensorManager.SENSOR_DELAY_UI);
         }
     }
 
-    private void showAlertDialog() {
+    private void unregisterSensorListener() {
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(sensorEventListener);
+        }
+    }
+
+    private void openBrandWebsite() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(BRAND_URL));
+        startActivity(intent);
+    }
+
+    private void showSuccessDialog() {
         if (isDialogShowing) return;
         isDialogShowing = true;
 
         new AlertDialog.Builder(this)
                 .setTitle("Verification Successful")
-                .setMessage("System identified you're human.")
+                .setMessage("You've been identified as human. Welcome!")
                 .setCancelable(false)
-                .setPositiveButton("OK", (dialog, which) -> {
-                    dialog.dismiss();
-                    Intent intent = new Intent(VerificationActivity.this, MainActivity.class);
-                    startActivity(intent);
-                    finish();
+                .setPositiveButton("Proceed", (dialog, which) -> {
+                    navigateToRegister();
                 })
                 .show();
+    }
+
+    private void navigateToRegister() {
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+        finish();
     }
 
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
-            if (isHumanVerified) return;
+            if (!isVerificationActive || isCooldownActive) return;
 
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                float z = event.values[2];
-
-                if (!flipDetected) {
-                    if (!isUpsideDown && z < -FLIP_THRESHOLD) {
-                        isUpsideDown = true;
-                        flipCount++;
-                        flipDetected = true;
-                        updateStatus();
-                    } else if (isUpsideDown && z > FLIP_THRESHOLD) {
-                        isUpsideDown = false;
-                        flipCount++;
-                        flipDetected = true;
-                        updateStatus();
-                    }
-                }
-
-                if (flipDetected) {
-                    new android.os.Handler().postDelayed(() -> flipDetected = false, 500);
-                }
-
-                if (flipCount >= MIN_FLIP_COUNT * 2) {
-                    isHumanVerified = true;
-                    if (sensorManager != null) {
-                        sensorManager.unregisterListener(sensorEventListener);
-                    }
-                    showAlertDialog();
-                }
+                processAccelerometerData(event.values[2]);
             }
         }
 
-        private void updateStatus() {
-            runOnUiThread(() -> {
-                int remaining = (MIN_FLIP_COUNT * 2) - flipCount;
-                if (remaining > 0) {
-                    verificationText.setText("Keep going! " + remaining + " more flips needed.");
-                } else {
-                    verificationText.setText("Verification Complete!");
-                }
-            });
+        private void processAccelerometerData(float zAxis) {
+            // Detect flip to upside down
+            if (!isUpsideDown && zAxis < -FLIP_THRESHOLD) {
+                handleDetectedFlip(true);
+            } 
+            // Detect flip back to normal
+            else if (isUpsideDown && zAxis > FLIP_THRESHOLD) {
+                handleDetectedFlip(false);
+            }
+        }
+
+        private void handleDetectedFlip(boolean currentlyUpsideDown) {
+            isUpsideDown = currentlyUpsideDown;
+            flipCount++;
+            isCooldownActive = true;
+            
+            updateUI();
+            
+            if (flipCount >= REQUIRED_FLIPS) {
+                completeVerification();
+            } else {
+                // Prevent jitter by adding a small cooldown
+                new Handler(Looper.getMainLooper()).postDelayed(() -> isCooldownActive = false, DETECTION_COOLDOWN_MS);
+            }
+        }
+
+        @SuppressLint({"DefaultLocale", "SetTextI18n"})
+        private void updateUI() {
+            int remaining = REQUIRED_FLIPS - flipCount;
+            if (remaining > 0) {
+                binding.verificationText.setText(String.format("Keep going! %d movements left.", remaining));
+            } else {
+                binding.verificationText.setText("Verification Complete!");
+            }
+        }
+
+        private void completeVerification() {
+            isVerificationActive = false;
+            unregisterSensorListener();
+            showSuccessDialog();
         }
 
         @Override

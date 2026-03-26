@@ -2,20 +2,22 @@ package lk.macna.nawwa_mc;
 
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Button;
-import android.widget.EditText;
+import android.util.Patterns;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 
+import lk.macna.nawwa_mc.databinding.ActivityForgotPasswordBinding;
+import lk.macna.nawwa_mc.network.ApiConfig;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -24,70 +26,95 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * ForgotPasswordActivity allows users to request a password reset link 
+ * via their registered email address.
+ */
 public class ForgotPasswordActivity extends AppCompatActivity {
 
-    private static final String TAG = "ForgotPasswordActivityLog";
-    private static final String RESET_PASSWORD_URL = "https://ecom-api.macna.app/api/users/forgot-password";
+    private static final String TAG = "ForgotPasswordActivity";
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.get(ApiConfig.JSON_MEDIA_TYPE);
 
-    private EditText emailEditText;
-    private OkHttpClient client;
+    private ActivityForgotPasswordBinding binding;
+    private final OkHttpClient httpClient = new OkHttpClient();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_forgot_password);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+        binding = ActivityForgotPasswordBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        setupEdgeToEdge();
+        setupClickListeners();
+    }
+
+    private void setupEdgeToEdge() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
 
-        emailEditText = findViewById(R.id.email);
-        Button resetPasswordButton = findViewById(R.id.button);
+    private void setupClickListeners() {
+        binding.button.setOnClickListener(v -> handleResetRequest());
+    }
 
-        client = new OkHttpClient();
+    private void handleResetRequest() {
+        String email = binding.email.getText().toString().trim();
 
-        resetPasswordButton.setOnClickListener(v -> {
-            String email = emailEditText.getText().toString().trim();
-            if (email.isEmpty()) {
-                Toast.makeText(ForgotPasswordActivity.this, "Please enter your email", Toast.LENGTH_SHORT).show();
-            } else {
-                sendResetPasswordRequest(email);
-            }
-        });
+        if (email.isEmpty()) {
+            binding.email.setError("Email is required");
+            return;
+        }
+
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            binding.email.setError("Please enter a valid email");
+            return;
+        }
+
+        sendResetPasswordRequest(email);
     }
 
     private void sendResetPasswordRequest(String email) {
         try {
-            JSONObject json = new JSONObject();
-            json.put("email", email);
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("email", email);
 
-            RequestBody body = RequestBody.create(json.toString(), MediaType.parse("application/json; charset=utf-8"));
+            RequestBody body = RequestBody.create(jsonBody.toString(), JSON_MEDIA_TYPE);
             Request request = new Request.Builder()
-                    .url(RESET_PASSWORD_URL)
+                    .url(ApiConfig.FORGOT_PASSWORD_URL)
                     .post(body)
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            httpClient.newCall(request).enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
-                    Log.e(TAG, "Failed to send request", e);
-                    runOnUiThread(() -> Toast.makeText(ForgotPasswordActivity.this, "Failed to send request", Toast.LENGTH_SHORT).show());
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    Log.e(TAG, "Request failed: " + e.getMessage());
+                    showToastOnMainThread("Failed to connect to server");
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        runOnUiThread(() -> Toast.makeText(ForgotPasswordActivity.this, "Password reset link sent to your email", Toast.LENGTH_SHORT).show());
+                        showToastOnMainThread("Password reset link sent to your email");
+                        finishOnMainThread();
                     } else {
-                        runOnUiThread(() -> Toast.makeText(ForgotPasswordActivity.this, "Failed to send reset link. Please try again.", Toast.LENGTH_SHORT).show());
+                        Log.e(TAG, "Server error: " + response.code());
+                        showToastOnMainThread("User not found or server error");
                     }
                 }
             });
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to build request", e);
-            Toast.makeText(this, "Failed to build request", Toast.LENGTH_SHORT).show();
+        } catch (JSONException e) {
+            Log.e(TAG, "JSON Build error", e);
         }
+    }
+
+    private void showToastOnMainThread(String message) {
+        runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
+    }
+
+    private void finishOnMainThread() {
+        runOnUiThread(this::finish);
     }
 }

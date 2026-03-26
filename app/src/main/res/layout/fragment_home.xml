@@ -210,7 +210,7 @@
                     <ImageView
                         android:layout_width="40dp"
                         android:layout_height="40dp"
-                        android:src="@drawable/ic_menu_camera"
+                        android:src="@drawable/ic_support"
                         app:tint="@color/accent_yellow" />
                     <TextView
                         android:layout_width="wrap_content"
@@ -223,27 +223,6 @@
             </com.google.android.material.card.MaterialCardView>
 
         </GridLayout>
-
-        <!-- Dynamic Content Banners -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewCategoryBanner1"
-            android:layout_width="0dp"
-            android:layout_height="140dp"
-            android:layout_marginTop="16dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/gridLayout"
-            tools:listitem="@layout/item_banner" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recyclerViewCategoryBanner2"
-            android:layout_width="0dp"
-            android:layout_height="140dp"
-            android:layout_marginTop="12dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/recyclerViewCategoryBanner1"
-            tools:listitem="@layout/item_banner" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

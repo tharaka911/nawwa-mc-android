@@ -3,16 +3,15 @@ package lk.macna.nawwa_mc;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.widget.Button;
+import android.util.Log;
+import android.util.Patterns;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-
-import com.google.android.material.textfield.TextInputEditText;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -20,6 +19,8 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 
+import lk.macna.nawwa_mc.databinding.ActivityMainBinding;
+import lk.macna.nawwa_mc.network.ApiConfig;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.MediaType;
@@ -28,139 +29,145 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 
+/**
+ * MainActivity handles user registration.
+ */
 public class MainActivity extends AppCompatActivity {
 
-    private TextInputEditText nameEditText, emailEditText, phoneEditText, passwordEditText;
-    private final OkHttpClient client = new OkHttpClient();
-    private static final String REGISTER_URL = "https://ecom-api.macna.app/api/users";
+    private static final String TAG = "MainActivity";
+    private static final MediaType JSON_MEDIA_TYPE = MediaType.get(ApiConfig.JSON_MEDIA_TYPE);
+
+    private ActivityMainBinding binding;
+    private final OkHttpClient httpClient = new OkHttpClient();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        setContentView(R.layout.activity_main);
-        
-        // Use the decor view to avoid null pointer if root ID is missing
-        ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), (v, insets) -> {
+        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
+
+        setupEdgeToEdge();
+        setupClickListeners();
+    }
+
+    private void setupEdgeToEdge() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.getRoot(), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
 
-        // Simplified: Find the inputs directly by their unique IDs
-        nameEditText = findViewById(R.id.RegName);
-        emailEditText = findViewById(R.id.RegMail);
-        phoneEditText = findViewById(R.id.Regphone);
-        passwordEditText = findViewById(R.id.RegPassword);
-        
-        Button registerButton = findViewById(R.id.buttonRegister);
-
-        registerButton.setOnClickListener(v -> {
-            if (validateInputFields()) {
-                registerUser();
+    private void setupClickListeners() {
+        binding.buttonRegister.setOnClickListener(v -> {
+            if (validateInputs()) {
+                performRegistration();
             }
         });
 
-        findViewById(R.id.buttonGoToLogin).setOnClickListener(v -> goToLogin());
+        binding.buttonGoToLogin.setOnClickListener(v -> navigateToLogin());
     }
 
-    private void goToLogin() {
-        Intent intent = new Intent(this, LoginActivity.class);
-        startActivity(intent);
-        finish();
-    }
-
-    private boolean validateInputFields() {
+    private boolean validateInputs() {
         boolean isValid = true;
 
-        if (TextUtils.isEmpty(nameEditText.getText())) {
-            nameEditText.setError("Name is required");
+        String name = binding.RegName.getText().toString().trim();
+        String email = binding.RegMail.getText().toString().trim();
+        String phone = binding.Regphone.getText().toString().trim();
+        String password = binding.RegPassword.getText().toString().trim();
+
+        if (TextUtils.isEmpty(name)) {
+            binding.RegName.setError("Name is required");
             isValid = false;
-        } else {
-            nameEditText.setError(null);
         }
 
-        if (TextUtils.isEmpty(emailEditText.getText())) {
-            emailEditText.setError("Email is required");
+        if (TextUtils.isEmpty(email)) {
+            binding.RegMail.setError("Email is required");
             isValid = false;
-        } else if (!android.util.Patterns.EMAIL_ADDRESS.matcher(emailEditText.getText()).matches()) {
-            emailEditText.setError("Invalid email format");
+        } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            binding.RegMail.setError("Invalid email format");
             isValid = false;
-        } else {
-            emailEditText.setError(null);
         }
 
-        if (TextUtils.isEmpty(phoneEditText.getText())) {
-            phoneEditText.setError("Phone is required");
+        if (TextUtils.isEmpty(phone)) {
+            binding.Regphone.setError("Phone is required");
             isValid = false;
-        } else {
-            phoneEditText.setError(null);
         }
 
-        if (TextUtils.isEmpty(passwordEditText.getText())) {
-            passwordEditText.setError("Password is required");
+        if (TextUtils.isEmpty(password)) {
+            binding.RegPassword.setError("Password is required");
             isValid = false;
-        } else if (passwordEditText.getText().length() < 6) {
-            passwordEditText.setError("Password must be at least 6 characters");
+        } else if (password.length() < 6) {
+            binding.RegPassword.setError("Password must be at least 6 characters");
             isValid = false;
-        } else {
-            passwordEditText.setError(null);
         }
 
         return isValid;
     }
 
-    private void registerUser() {
-        String name = nameEditText.getText().toString().trim();
-        String email = emailEditText.getText().toString().trim();
-        String phone = phoneEditText.getText().toString().trim();
-        String password = passwordEditText.getText().toString().trim();
-
+    private void performRegistration() {
         try {
-            JSONObject jsonObject = new JSONObject();
-            jsonObject.put("name", name);
-            jsonObject.put("email", email);
-            jsonObject.put("phone", phone);
-            jsonObject.put("password", password);
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("name", binding.RegName.getText().toString().trim());
+            jsonBody.put("email", binding.RegMail.getText().toString().trim());
+            jsonBody.put("phone", binding.Regphone.getText().toString().trim());
+            jsonBody.put("password", binding.RegPassword.getText().toString().trim());
 
-            RequestBody body = RequestBody.create(jsonObject.toString(), MediaType.get("application/json; charset=utf-8"));
+            RequestBody body = RequestBody.create(jsonBody.toString(), JSON_MEDIA_TYPE);
             Request request = new Request.Builder()
-                    .url(REGISTER_URL)
+                    .url(ApiConfig.REGISTER_URL)
                     .post(body)
-                    .addHeader("Content-Type", "application/json")
                     .build();
 
-            client.newCall(request).enqueue(new Callback() {
+            httpClient.newCall(request).enqueue(new Callback() {
                 @Override
-                public void onFailure(Call call, IOException e) {
-                    runOnUiThread(() -> Toast.makeText(MainActivity.this, "Registration failed", Toast.LENGTH_SHORT).show());
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    Log.e(TAG, "Registration failed", e);
+                    showToastOnMainThread("Registration failed. Check connection.");
                 }
 
                 @Override
-                public void onResponse(Call call, Response response) throws IOException {
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        runOnUiThread(() -> Toast.makeText(MainActivity.this, "Registration successful", Toast.LENGTH_SHORT).show());
+                        showToastOnMainThread("Registration successful!");
+                        navigateToLogin();
                     } else {
-                        String responseData = response.body() != null ? response.body().string() : null;
-                        try {
-                            assert responseData != null;
-                            JSONObject json = new JSONObject(responseData);
-                            JSONArray errors = json.getJSONArray("errors");
-                            JSONObject error = errors.getJSONObject(0);
-                            JSONObject data = error.getJSONObject("data");
-                            JSONArray fieldErrors = data.getJSONArray("errors");
-                            String errorMessage = fieldErrors.getJSONObject(0).getString("message");
-                            runOnUiThread(() -> Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_SHORT).show());
-                        } catch (JSONException e) {
-                            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Registration failed", Toast.LENGTH_SHORT).show());
-                        }
+                        handleErrorResponse(response);
                     }
                 }
             });
-
         } catch (JSONException e) {
-            e.printStackTrace();
-            Toast.makeText(this, "Registration failed", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "JSON error", e);
         }
+    }
+
+    private void handleErrorResponse(Response response) throws IOException {
+        String responseData = response.body() != null ? response.body().string() : "";
+        Log.e(TAG, "Server error: " + responseData);
+        
+        try {
+            JSONObject json = new JSONObject(responseData);
+            JSONArray errors = json.getJSONArray("errors");
+            String message = errors.getJSONObject(0)
+                    .getJSONObject("data")
+                    .getJSONArray("errors")
+                    .getJSONObject(0)
+                    .getString("message");
+            showToastOnMainThread(message);
+        } catch (Exception e) {
+            showToastOnMainThread("Registration failed. Please try again.");
+        }
+    }
+
+    private void navigateToLogin() {
+        runOnUiThread(() -> {
+            Intent intent = new Intent(this, LoginActivity.class);
+            startActivity(intent);
+            finish();
+        });
+    }
+
+    private void showToastOnMainThread(String message) {
+        runOnUiThread(() -> Toast.makeText(this, message, Toast.LENGTH_SHORT).show());
     }
 }

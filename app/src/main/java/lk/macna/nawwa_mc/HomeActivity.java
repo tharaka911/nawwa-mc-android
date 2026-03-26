@@ -22,14 +22,20 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.navigation.NavigationView;
 
 import lk.macna.nawwa_mc.databinding.ActivityHomeBinding;
+import lk.macna.nawwa_mc.network.ApiConfig;
 
+/**
+ * HomeActivity serves as the main entry point after login, hosting the 
+ * Navigation Drawer and primary content fragments.
+ */
 public class HomeActivity extends AppCompatActivity {
 
-    private static final String TAG = "HomeActivityLog";
-    private static final String BASE_URL = "https://ecom-api.macna.app";
-    private AppBarConfiguration mAppBarConfiguration;
+    private static final String TAG = "HomeActivity";
+    private static final String PREFS_NAME = "MyPrefs";
+
     private ActivityHomeBinding binding;
     private NavController navController;
+    private AppBarConfiguration appBarConfiguration;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -38,63 +44,72 @@ public class HomeActivity extends AppCompatActivity {
         binding = ActivityHomeBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        setupNavigation();
+        setupNavigationHeader();
+    }
+
+    /**
+     * Initializes the Toolbar, Navigation Drawer, and NavController components.
+     */
+    private void setupNavigation() {
         setSupportActionBar(binding.appBarHome.toolbar);
 
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
 
-        // Passing each menu ID as a set of Ids because each
-        // menu should be considered as top level destinations.
-        mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_my_orders, R.id.nav_cart, R.id.nav_product, R.id.nav_my_profile, R.id.nav_category)
+        // Define top-level destinations to show hamburger icon instead of back arrow
+        appBarConfiguration = new AppBarConfiguration.Builder(
+                R.id.nav_home, R.id.nav_my_orders, R.id.nav_cart, 
+                R.id.nav_product, R.id.nav_my_profile, R.id.nav_category)
                 .setOpenableLayout(drawer)
                 .build();
+
         navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_home);
-        NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
+        
+        // Connect NavController with ActionBar and NavigationView
+        NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-        // Get the header view
-        View headerView = navigationView.getHeaderView(0);
+        // Custom listener to ensure smooth transitions from destinations with arguments (like Product)
+        navigationView.setNavigationItemSelectedListener(item -> {
+            boolean handled = NavigationUI.onNavDestinationSelected(item, navController);
+            if (handled) {
+                drawer.closeDrawers();
+            }
+            return handled;
+        });
+    }
 
-        // Get the TextViews and ImageView
-        TextView loggedUserName = headerView.findViewById(R.id.LoggedUserName);
-        TextView loggedUserEmail = headerView.findViewById(R.id.LoggedUserEmail);
-        ImageView userProfilePic = headerView.findViewById(R.id.UserProfilePic);
+    /**
+     * Fetches user profile data from SharedPreferences and populates the Navigation Drawer header.
+     */
+    private void setupNavigationHeader() {
+        View headerView = binding.navView.getHeaderView(0);
+        TextView nameTextView = headerView.findViewById(R.id.LoggedUserName);
+        TextView emailTextView = headerView.findViewById(R.id.LoggedUserEmail);
+        ImageView profileImageView = headerView.findViewById(R.id.UserProfilePic);
 
-        // Fetch user data from SharedPreferences
-        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
-        String userName = sharedPreferences.getString("name", "User Name");
-        String userEmail = sharedPreferences.getString("email", "user@example.com");
-        String userProfilePicUrl = sharedPreferences.getString("profileImageUrl", "");
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String name = prefs.getString("name", "User");
+        String email = prefs.getString("email", "");
+        String profileUrl = prefs.getString("profileImageUrl", "");
 
-        // Log the fetched data
-        Log.d(TAG, "Fetched userName: " + userName);
-        Log.d(TAG, "Fetched userEmail: " + userEmail);
-        Log.d(TAG, "Fetched userProfilePicUrl: " + userProfilePicUrl);
+        nameTextView.setText(name);
+        emailTextView.setText(email);
 
-        // Append base URL to profile image URL
-        String fullProfileImageUrl = BASE_URL + userProfilePicUrl;
-
-        // Log the full profile image URL
-        Log.d(TAG, "Full profile image URL: " + fullProfileImageUrl);
-
-        // Set the user data in the Navigation Header
-        loggedUserName.setText(userName);
-        loggedUserEmail.setText(userEmail);
-        if (!userProfilePicUrl.isEmpty()) {
+        if (!profileUrl.isEmpty()) {
             Glide.with(this)
-                    .load(fullProfileImageUrl)
+                    .load(ApiConfig.BASE_URL + profileUrl)
                     .centerCrop()
-                    .placeholder(R.mipmap.ic_launcher_round) // default image
-                    .into(userProfilePic);
+                    .placeholder(R.mipmap.ic_launcher_round)
+                    .into(profileImageView);
         } else {
-            userProfilePic.setImageResource(R.mipmap.ic_launcher_round);
+            profileImageView.setImageResource(R.mipmap.ic_launcher_round);
         }
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.home, menu);
         return true;
     }
@@ -106,10 +121,8 @@ public class HomeActivity extends AppCompatActivity {
         if (id == R.id.action_reload) {
             reloadCurrentFragment();
             return true;
-        }
-
-        if (id == R.id.action_sign_out) {
-            logout();
+        } else if (id == R.id.action_sign_out) {
+            handleLogout();
             return true;
         }
 
@@ -117,26 +130,28 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void reloadCurrentFragment() {
-        int currentFragmentId = navController.getCurrentDestination().getId();
+        int currentDestinationId = navController.getCurrentDestination().getId();
         navController.popBackStack();
-        navController.navigate(currentFragmentId);
+        navController.navigate(currentDestinationId);
     }
 
-    private void logout() {
-        SharedPreferences sharedPreferences = getSharedPreferences("MyPrefs", MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.clear();
-        editor.apply();
+    private void handleLogout() {
+        // Clear session data
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                .edit()
+                .clear()
+                .apply();
 
+        // Navigate back to Login
         Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
     }
 
     @Override
     public boolean onSupportNavigateUp() {
-        NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_home);
-        return NavigationUI.navigateUp(navController, mAppBarConfiguration)
+        return NavigationUI.navigateUp(navController, appBarConfiguration)
                 || super.onSupportNavigateUp();
     }
 }
