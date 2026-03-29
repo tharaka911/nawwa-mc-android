@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -26,18 +27,17 @@ import lk.macna.nawwa_mc.databinding.ActivityMapBinding;
 
 /**
  * MapActivity allows users to select a location on a map or use their current live location.
- * The selected coordinates are returned to the calling activity.
+ * Improved to show a confirmation button before returning the coordinates.
  */
 public class MapActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
     private static final float DEFAULT_ZOOM = 15f;
-    private static final float CLOSE_ZOOM = 18f;
 
     private GoogleMap mMap;
     private ActivityMapBinding binding;
     private FusedLocationProviderClient fusedLocationClient;
-    private Marker currentLocationMarker;
+    private LatLng selectedLatLng;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +62,12 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private void setupClickListeners() {
         binding.buttonLiveLocation.setOnClickListener(v -> checkLocationPermissionAndGetLocation());
         binding.buttonMapType.setOnClickListener(v -> cycleMapType());
+        
+        binding.buttonConfirmLocation.setOnClickListener(v -> {
+            if (selectedLatLng != null) {
+                returnLocationResult(selectedLatLng);
+            }
+        });
     }
 
     @Override
@@ -74,34 +80,26 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     private void configureMapSettings() {
         mMap.getUiSettings().setZoomControlsEnabled(true);
-        mMap.getUiSettings().setMyLocationButtonEnabled(false); // We use our own custom button
+        mMap.getUiSettings().setMyLocationButtonEnabled(false);
     }
 
     private void setupMapInteractions() {
-        // Set initial position (Sydney as placeholder or maybe a more relevant default)
-        LatLng defaultLocation = new LatLng(-34, 151);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 10));
-
         mMap.setOnMapClickListener(latLng -> {
+            selectedLatLng = latLng;
             mMap.clear();
             mMap.addMarker(new MarkerOptions().position(latLng).title("Selected Location"));
-            returnLocationResult(latLng);
-        });
-
-        mMap.setOnMarkerClickListener(marker -> {
-            if (marker.equals(currentLocationMarker)) {
-                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(marker.getPosition(), CLOSE_ZOOM));
-                return true;
-            }
-            return false;
+            
+            // Show confirmation button once a location is picked
+            binding.buttonConfirmLocation.setVisibility(View.VISIBLE);
         });
     }
 
     private void returnLocationResult(LatLng latLng) {
         Intent resultIntent = new Intent();
-        resultIntent.putExtra("location", latLng.latitude + "," + latLng.longitude);
+        // Return format: "latitude,longitude"
+        String locationString = latLng.latitude + "," + latLng.longitude;
+        resultIntent.putExtra("location", locationString);
         setResult(RESULT_OK, resultIntent);
-        Toast.makeText(this, "Location Selected", Toast.LENGTH_SHORT).show();
         finish();
     }
 
@@ -128,52 +126,26 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
             if (location != null) {
                 LatLng currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
-                updateCurrentLocationMarker(currentLatLng);
                 mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, DEFAULT_ZOOM));
-            } else {
-                Toast.makeText(this, "Unable to fetch current location", Toast.LENGTH_SHORT).show();
+                
+                // Automatically set current location as selected until user clicks elsewhere
+                selectedLatLng = currentLatLng;
+                binding.buttonConfirmLocation.setVisibility(View.VISIBLE);
             }
         });
     }
 
-    private void updateCurrentLocationMarker(LatLng latLng) {
-        if (currentLocationMarker != null) {
-            currentLocationMarker.remove();
-        }
-        currentLocationMarker = mMap.addMarker(new MarkerOptions()
-                .position(latLng)
-                .title("You are here"));
-    }
-
     private void cycleMapType() {
         if (mMap == null) return;
-
         int currentType = mMap.getMapType();
-        switch (currentType) {
-            case GoogleMap.MAP_TYPE_NORMAL:
-                mMap.setMapType(GoogleMap.MAP_TYPE_SATELLITE);
-                break;
-            case GoogleMap.MAP_TYPE_SATELLITE:
-                mMap.setMapType(GoogleMap.MAP_TYPE_TERRAIN);
-                break;
-            case GoogleMap.MAP_TYPE_TERRAIN:
-                mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
-                break;
-            default:
-                mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
-                break;
-        }
+        mMap.setMapType(currentType == GoogleMap.MAP_TYPE_NORMAL ? GoogleMap.MAP_TYPE_HYBRID : GoogleMap.MAP_TYPE_NORMAL);
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkLocationPermissionAndGetLocation();
-            } else {
-                Toast.makeText(this, "Location permission is required for this feature", Toast.LENGTH_SHORT).show();
-            }
+        if (requestCode == LOCATION_PERMISSION_REQUEST_CODE && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            checkLocationPermissionAndGetLocation();
         }
     }
 }

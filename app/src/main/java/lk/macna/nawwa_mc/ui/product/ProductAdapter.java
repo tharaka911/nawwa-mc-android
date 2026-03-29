@@ -15,6 +15,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -96,9 +98,13 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             categoryTextView.setText(product.getCategory());
             priceTextView.setText(String.format("$%.2f", product.getPrice()));
 
+            // Improved image loading with Glide
             Glide.with(itemView.getContext())
                     .load(product.getImageUrl())
-                    .placeholder(R.drawable.new_product)
+                    .apply(new RequestOptions()
+                            .placeholder(R.drawable.new_product)
+                            .error(R.drawable.new_product)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL))
                     .centerCrop()
                     .into(productImageView);
 

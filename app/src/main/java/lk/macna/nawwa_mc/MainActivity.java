@@ -8,6 +8,7 @@ import android.util.Patterns;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -129,8 +130,7 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (response.isSuccessful()) {
-                        showToastOnMainThread("Registration successful!");
-                        navigateToLogin();
+                        showVerificationPopup();
                     } else {
                         handleErrorResponse(response);
                     }
@@ -139,6 +139,19 @@ public class MainActivity extends AppCompatActivity {
         } catch (JSONException e) {
             Log.e(TAG, "JSON error", e);
         }
+    }
+
+    private void showVerificationPopup() {
+        runOnUiThread(() -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Verify Your Email")
+                    .setMessage("Registration successful! We've sent a verification link to your email. Please check your inbox (and spam folder) to complete your registration.")
+                    .setCancelable(false)
+                    .setPositiveButton("Go to Login", (dialog, which) -> {
+                        navigateToLogin();
+                    })
+                    .show();
+        });
     }
 
     private void handleErrorResponse(Response response) throws IOException {

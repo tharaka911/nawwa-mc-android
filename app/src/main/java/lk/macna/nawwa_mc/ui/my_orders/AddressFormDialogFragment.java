@@ -11,12 +11,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import lk.macna.nawwa_mc.MapActivity;
-import lk.macna.nawwa_mc.R;
 import lk.macna.nawwa_mc.databinding.FragmentAddressFormBinding;
 import lk.macna.nawwa_mc.network.ApiConfig;
 import okhttp3.Call;
@@ -35,17 +36,28 @@ import java.io.IOException;
 /**
  * AddressFormDialogFragment provides a pop-up interface for users to enter 
  * or update their delivery address and location for a specific order.
+ * Updated to use modern Activity Result API instead of deprecated onActivityResult.
  */
 public class AddressFormDialogFragment extends DialogFragment {
 
     private static final String TAG = "AddressFormDialog";
     private static final String PREFS_NAME = "MyPrefs";
     private static final MediaType JSON_MEDIA_TYPE = MediaType.get(ApiConfig.JSON_MEDIA_TYPE);
-    private static final int REQUEST_CODE_MAP = 1001;
 
     private FragmentAddressFormBinding binding;
     private String orderId;
     private final OkHttpClient httpClient = new OkHttpClient();
+
+    // Modern Activity Result Launcher
+    private final ActivityResultLauncher<Intent> mapPickerLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    String location = result.getData().getStringExtra("location");
+                    binding.editTextLocation.setText(location);
+                }
+            }
+    );
 
     public AddressFormDialogFragment() {
         // Required empty public constructor
@@ -179,16 +191,7 @@ public class AddressFormDialogFragment extends DialogFragment {
 
     private void launchMapPicker() {
         Intent intent = new Intent(requireActivity(), MapActivity.class);
-        startActivityForResult(intent, REQUEST_CODE_MAP);
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_MAP && resultCode == Activity.RESULT_OK && data != null) {
-            String location = data.getStringExtra("location");
-            binding.editTextLocation.setText(location);
-        }
+        mapPickerLauncher.launch(intent);
     }
 
     @Override

@@ -17,10 +17,15 @@ import lk.macna.nawwa_mc.R;
  */
 public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.BannerViewHolder> {
 
-    private final List<Integer> bannerImages;
+    private List<Integer> bannerImages;
 
     public BannerAdapter(List<Integer> bannerImages) {
         this.bannerImages = bannerImages;
+    }
+
+    public void setBannerImages(List<Integer> bannerImages) {
+        this.bannerImages = bannerImages;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -41,10 +46,6 @@ public class BannerAdapter extends RecyclerView.Adapter<BannerAdapter.BannerView
     @Override
     public int getItemCount() {
         return bannerImages != null ? bannerImages.size() : 0;
-    }
-
-    public List<Integer> getBannerImages() {
-        return bannerImages;
     }
 
     /**

@@ -21,7 +21,7 @@ import com.google.firebase.messaging.RemoteMessage;
 public class MessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "MessagingService";
-    private static final String CHANNEL_ID = "macna_mc_notifications";
+    private static final String CHANNEL_ID = "nawwa_mc_notifications";
     private static final String CHANNEL_NAME = "General Notifications";
     private static final int NOTIFICATION_ID = 1001;
 

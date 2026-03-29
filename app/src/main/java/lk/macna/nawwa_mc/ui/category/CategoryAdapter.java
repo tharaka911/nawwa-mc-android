@@ -20,10 +20,15 @@ import lk.macna.nawwa_mc.model.Category;
  */
 public class CategoryAdapter extends RecyclerView.Adapter<CategoryAdapter.CategoryViewHolder> {
 
-    private final List<Category> categories;
+    private List<Category> categories;
 
     public CategoryAdapter(List<Category> categories) {
         this.categories = categories;
+    }
+
+    public void setCategories(List<Category> categories) {
+        this.categories = categories;
+        notifyDataSetChanged();
     }
 
     @NonNull
