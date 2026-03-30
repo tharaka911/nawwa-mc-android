@@ -1,17 +1,23 @@
 package lk.macna.nawwa_mc;
 
+import android.Manifest;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -25,13 +31,14 @@ import lk.macna.nawwa_mc.databinding.ActivityHomeBinding;
 import lk.macna.nawwa_mc.network.ApiConfig;
 
 /**
- * HomeActivity serves as the main entry point after login, hosting the 
- * Navigation Drawer and primary content fragments.
+ * HomeActivity serves as the main entry point after login.
+ * Updated to handle Android 13+ Notification Permissions.
  */
 public class HomeActivity extends AppCompatActivity {
 
     private static final String TAG = "HomeActivity";
     private static final String PREFS_NAME = "MyPrefs";
+    private static final int NOTIFICATION_PERMISSION_CODE = 1002;
 
     private ActivityHomeBinding binding;
     private NavController navController;
@@ -46,18 +53,36 @@ public class HomeActivity extends AppCompatActivity {
 
         setupNavigation();
         setupNavigationHeader();
+        
+        // Request Notification Permission for Android 13+
+        requestNotificationPermission();
     }
 
-    /**
-     * Initializes the Toolbar, Navigation Drawer, and NavController components.
-     */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, NOTIFICATION_PERMISSION_CODE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == NOTIFICATION_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Notifications enabled", Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, "Notification permission denied. You might miss important updates.", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
     private void setupNavigation() {
         setSupportActionBar(binding.appBarHome.toolbar);
-
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
 
-        // Define top-level destinations to show hamburger icon instead of back arrow
         appBarConfiguration = new AppBarConfiguration.Builder(
                 R.id.nav_home, R.id.nav_my_orders, R.id.nav_cart, 
                 R.id.nav_product, R.id.nav_my_profile, R.id.nav_category)
@@ -65,12 +90,9 @@ public class HomeActivity extends AppCompatActivity {
                 .build();
 
         navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_home);
-        
-        // Connect NavController with ActionBar and NavigationView
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-        // Custom listener to ensure smooth transitions from destinations with arguments (like Product)
         navigationView.setNavigationItemSelectedListener(item -> {
             boolean handled = NavigationUI.onNavDestinationSelected(item, navController);
             if (handled) {
@@ -80,9 +102,6 @@ public class HomeActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Fetches user profile data from SharedPreferences and populates the Navigation Drawer header.
-     */
     private void setupNavigationHeader() {
         View headerView = binding.navView.getHeaderView(0);
         TextView nameTextView = headerView.findViewById(R.id.LoggedUserName);
@@ -97,14 +116,12 @@ public class HomeActivity extends AppCompatActivity {
         nameTextView.setText(name);
         emailTextView.setText(email);
 
-        if (!profileUrl.isEmpty()) {
+        if (profileUrl != null && !profileUrl.isEmpty()) {
             Glide.with(this)
                     .load(ApiConfig.BASE_URL + profileUrl)
                     .centerCrop()
                     .placeholder(R.mipmap.ic_launcher_round)
                     .into(profileImageView);
-        } else {
-            profileImageView.setImageResource(R.mipmap.ic_launcher_round);
         }
     }
 
@@ -117,7 +134,6 @@ public class HomeActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-
         if (id == R.id.action_reload) {
             reloadCurrentFragment();
             return true;
@@ -125,7 +141,6 @@ public class HomeActivity extends AppCompatActivity {
             handleLogout();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
@@ -136,13 +151,7 @@ public class HomeActivity extends AppCompatActivity {
     }
 
     private void handleLogout() {
-        // Clear session data
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                .edit()
-                .clear()
-                .apply();
-
-        // Navigate back to Login
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().clear().apply();
         Intent intent = new Intent(this, LoginActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);

@@ -13,6 +13,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 
 import java.util.List;
 
@@ -79,16 +81,19 @@ public class MyOrdersAdapter extends RecyclerView.Adapter<MyOrdersAdapter.MyOrde
         public void bind(Order order, OnOrderItemClickListener listener) {
             productNameTextView.setText(order.getProductName());
             orderStatusTextView.setText(order.getOrderStatus());
-            totalPriceTextView.setText(String.format("Total Price: $%.2f", order.getTotalPrice()));
+            totalPriceTextView.setText(String.format("Total Price: LKR %.2f", order.getTotalPrice()));
 
+            // Improved image loading with Glide to ensure clarity and caching
             Glide.with(itemView.getContext())
                     .load(order.getImageUrl())
-                    .placeholder(R.drawable.new_product)
+                    .apply(new RequestOptions()
+                            .placeholder(R.drawable.new_product)
+                            .error(R.drawable.new_product)
+                            .diskCacheStrategy(DiskCacheStrategy.ALL))
                     .centerCrop()
                     .into(productImageView);
 
             addToCartButton.setOnClickListener(v -> {
-                Toast.makeText(itemView.getContext(), "Opening dispatch form for " + order.getProductName(), Toast.LENGTH_SHORT).show();
                 if (listener != null) {
                     listener.onAddToCartClicked(order.getOrderID());
                 }

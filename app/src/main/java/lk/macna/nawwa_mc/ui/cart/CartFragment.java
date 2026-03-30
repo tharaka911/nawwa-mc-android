@@ -142,9 +142,22 @@ public class CartFragment extends Fragment {
             cartItem.setPrice(details.getDouble("price"));
             cartItem.setQuantity(productEntry.getInt("quantity"));
             
-            JSONObject image = details.optJSONObject("image");
+            // Handle image logic: check product entry level first, then details
+            JSONObject image = productEntry.optJSONObject("image");
+            if (image == null) {
+                image = details.optJSONObject("image");
+            }
+
             if (image != null) {
-                cartItem.setImageUrl(ApiConfig.BASE_URL + image.getString("url"));
+                String url = image.optString("url");
+                if (!url.isEmpty()) {
+                    // Check if URL is absolute or relative
+                    if (url.startsWith("http")) {
+                        cartItem.setImageUrl(url);
+                    } else {
+                        cartItem.setImageUrl(ApiConfig.BASE_URL + url);
+                    }
+                }
             }
             
             targetList.add(cartItem);

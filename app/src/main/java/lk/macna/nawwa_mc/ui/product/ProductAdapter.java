@@ -2,6 +2,8 @@ package lk.macna.nawwa_mc.ui.product;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -49,9 +51,11 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
     private final List<Product> productList;
     private final OkHttpClient httpClient = new OkHttpClient();
     private final SharedPreferences sharedPreferences;
+    private final Context context;
 
     public ProductAdapter(List<Product> productList, @NonNull Context context) {
         this.productList = productList;
+        this.context = context;
         this.sharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
@@ -74,9 +78,6 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         return productList != null ? productList.size() : 0;
     }
 
-    /**
-     * ViewHolder for Product items, encapsulating view logic and click listeners.
-     */
     class ProductViewHolder extends RecyclerView.ViewHolder {
         private final ImageView productImageView;
         private final TextView nameTextView;
@@ -96,9 +97,8 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         public void bind(Product product) {
             nameTextView.setText(product.getName());
             categoryTextView.setText(product.getCategory());
-            priceTextView.setText(String.format("$%.2f", product.getPrice()));
+            priceTextView.setText(String.format("LKR %.2f", product.getPrice()));
 
-            // Improved image loading with Glide
             Glide.with(itemView.getContext())
                     .load(product.getImageUrl())
                     .apply(new RequestOptions()
@@ -112,25 +112,31 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         }
 
         private void handleAddToCart(Product product) {
-            Toast.makeText(itemView.getContext(), "Added " + product.getName() + " to cart", Toast.LENGTH_SHORT).show();
-            addToCartApiCall(product.getId());
+            addToCartApiCall(product.getId(), product.getName());
         }
     }
 
-    /**
-     * Network call to add a product to the user's remote cart.
-     */
-    private void addToCartApiCall(String productId) {
+    private void addToCartApiCall(String productId, String productName) {
         String apiKey = sharedPreferences.getString("apiKey", "");
+        String email = sharedPreferences.getString("email", "");
 
-        if (apiKey.isEmpty()) {
-            Log.e(TAG, "API key is missing");
+        // Log the credentials being used
+        Log.d(TAG, "Using API Key: " + (apiKey.isEmpty() ? "MISSING" : "PRESENT"));
+        Log.d(TAG, "Using Email: " + (email.isEmpty() ? "MISSING" : email));
+
+        if (apiKey.isEmpty() || email.isEmpty()) {
+            showToast("Please login first");
             return;
         }
 
         try {
-            JSONObject cartJson = createCartRequestJson(productId);
-            RequestBody body = RequestBody.create(cartJson.toString(), JSON_MEDIA_TYPE);
+            JSONObject cartJson = createCartRequestJson(productId, email);
+            String jsonString = cartJson.toString();
+            
+            Log.d(TAG, "Request URL: " + ApiConfig.CARTS_URL);
+            Log.d(TAG, "Request JSON: " + jsonString);
+
+            RequestBody body = RequestBody.create(JSON_MEDIA_TYPE, jsonString);
             
             Request request = new Request.Builder()
                     .url(ApiConfig.CARTS_URL)
@@ -141,24 +147,29 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             httpClient.newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    Log.e(TAG, "Cart update failed: " + e.getMessage());
+                    Log.e(TAG, "Network failure: " + e.getMessage());
+                    showToast("Network error");
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    String responseBody = response.body() != null ? response.body().string() : "No response body";
+                    
                     if (response.isSuccessful()) {
-                        Log.d(TAG, "Successfully added to cart");
+                        Log.d(TAG, "Cart Response: " + responseBody);
+                        showToast(productName + " added to cart!");
                     } else {
-                        Log.e(TAG, "Cart update error: " + response.code());
+                        Log.e(TAG, "Cart Error " + response.code() + ": " + responseBody);
+                        showToast("Failed to add to cart (Error " + response.code() + ")");
                     }
                 }
             });
         } catch (JSONException e) {
-            Log.e(TAG, "JSON creation failed", e);
+            Log.e(TAG, "JSON error", e);
         }
     }
 
-    private JSONObject createCartRequestJson(String productId) throws JSONException {
+    private JSONObject createCartRequestJson(String productId, String email) throws JSONException {
         JSONObject productEntry = new JSONObject();
         productEntry.put("product", productId);
         productEntry.put("quantity", 1);
@@ -167,7 +178,16 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
         productsList.put(productEntry);
 
         JSONObject root = new JSONObject();
+        // The backend expects "useremail" as the key, not "email"
+        root.put("useremail", email);
         root.put("products", productsList);
+        root.put("status", "pending");
         return root;
+    }
+
+    private void showToast(String message) {
+        new Handler(Looper.getMainLooper()).post(() -> 
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        );
     }
 }

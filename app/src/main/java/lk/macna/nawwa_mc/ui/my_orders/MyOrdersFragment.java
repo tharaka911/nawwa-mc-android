@@ -31,8 +31,8 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 /**
- * MyOrdersFragment displays a history of the user's orders, including product details,
- * order status, and total pricing.
+ * MyOrdersFragment displays a history of the user's orders.
+ * Improved to handle image URLs correctly for better clarity.
  */
 public class MyOrdersFragment extends Fragment implements MyOrdersAdapter.OnOrderItemClickListener {
 
@@ -65,17 +65,11 @@ public class MyOrdersFragment extends Fragment implements MyOrdersAdapter.OnOrde
         binding.RecyclerViewMyOrders.setAdapter(myOrdersAdapter);
     }
 
-    /**
-     * Executes the network request to retrieve user orders.
-     */
     private void fetchOrdersFromApi() {
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String apiKey = prefs.getString("apiKey", "");
 
-        if (apiKey.isEmpty()) {
-            Log.e(TAG, "Authentication token missing");
-            return;
-        }
+        if (apiKey.isEmpty()) return;
 
         Request request = new Request.Builder()
                 .url(ApiConfig.ORDERS_URL)
@@ -85,21 +79,17 @@ public class MyOrdersFragment extends Fragment implements MyOrdersAdapter.OnOrde
         httpClient.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                Log.e(TAG, "Network request failed: " + e.getMessage());
+                Log.e(TAG, "Orders fetch failed: " + e.getMessage());
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                if (!response.isSuccessful() || response.body() == null) {
-                    Log.e(TAG, "Unexpected server response: " + response.code());
-                    return;
-                }
-
-                try {
-                    String jsonResponse = response.body().string();
-                    parseOrdersJson(jsonResponse);
-                } catch (JSONException e) {
-                    Log.e(TAG, "JSON parsing error: " + e.getMessage());
+                if (response.isSuccessful() && response.body() != null) {
+                    try {
+                        parseOrdersJson(response.body().string());
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Parsing error", e);
+                    }
                 }
             }
         });
@@ -111,9 +101,7 @@ public class MyOrdersFragment extends Fragment implements MyOrdersAdapter.OnOrde
 
         List<Order> tempOrders = new ArrayList<>();
         for (int i = 0; i < ordersArray.length(); i++) {
-            JSONObject orderJson = ordersArray.getJSONObject(i);
-            Order order = mapJsonToOrder(orderJson);
-            tempOrders.add(order);
+            tempOrders.add(mapJsonToOrder(ordersArray.getJSONObject(i)));
         }
 
         if (isAdded()) {
@@ -128,24 +116,26 @@ public class MyOrdersFragment extends Fragment implements MyOrdersAdapter.OnOrde
     private Order mapJsonToOrder(JSONObject orderJson) throws JSONException {
         Order order = new Order();
         order.setOrderID(orderJson.getString("id"));
-        order.setAddressLine1(orderJson.optString("addressLine1"));
-        order.setAddressLine2(orderJson.optString("addressLine2"));
-        order.setCity(orderJson.optString("city"));
-        order.setPhone(orderJson.optString("phone"));
-        order.setLocation(orderJson.optString("location"));
         order.setOrderStatus(orderJson.optString("orderStatus"));
-        order.setTotalPrice(orderJson.getDouble("totalPrice"));
+        order.setTotalPrice(orderJson.optDouble("totalPrice", 0.0));
 
-        JSONArray products = orderJson.getJSONArray("products");
-        if (products.length() > 0) {
+        JSONArray products = orderJson.optJSONArray("products");
+        if (products != null && products.length() > 0) {
             JSONObject firstProduct = products.getJSONObject(0);
-            JSONObject details = firstProduct.getJSONObject("product");
-            JSONObject image = details.getJSONObject("image");
-
-            order.setProductName(details.getString("name"));
-            order.setPrice(details.getDouble("price"));
-            order.setQuantity(firstProduct.getInt("quantity"));
-            order.setImageUrl(ApiConfig.BASE_URL + image.getString("url"));
+            JSONObject details = firstProduct.optJSONObject("product");
+            if (details != null) {
+                order.setProductName(details.optString("name"));
+                
+                JSONObject imageObj = details.optJSONObject("image");
+                if (imageObj != null) {
+                    String imageUrl = imageObj.optString("url");
+                    if (imageUrl.startsWith("http")) {
+                        order.setImageUrl(imageUrl);
+                    } else {
+                        order.setImageUrl(ApiConfig.BASE_URL + imageUrl);
+                    }
+                }
+            }
         }
         return order;
     }
